@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=2.0, minimum-scale=0.5">
+  <title>瞄准点击训练 · FPS热身</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+      padding: 20px;
+      margin: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+    }
+    .game-container {
+      background: #ffffff;
+      border-radius: 2.5rem;
+      padding: 1.8rem;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+      width: 100%;
+      max-width: 900px;
+    }
+    canvas {
+      display: block;
+      border-radius: 2rem;
+      background: #ffffff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 10px 30px rgba(0, 0, 0, 0.05);
+      cursor: none;
+      width: 100%;
+      height: auto;
+      max-width: 800px;
+      aspect-ratio: 4 / 3;
+    }
+    .info-panel {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(18px);
+      border-radius: 5rem;
+      padding: 0.8rem 2.2rem;
+      color: #333333;
+      font-weight: 600;
+      font-size: 1.3rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .stat-group {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .score-box, .kpm-box, .timer-box {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .score-box span:first-child, .kpm-box span:first-child, .timer-box span:first-child {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #666666;
+    }
+    .score-value, .kpm-value, .timer-value {
+      background: #f8f9fa;
+      padding: 0.4rem 1.2rem;
+      border-radius: 3rem;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #2c3e50;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+      min-width: 80px;
+      text-align: center;
+      border: 1px solid #e9ecef;
+    }
+    .timer-value {
+      color: #e67e22;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpm-value {
+      color: #27ae60;
+    }
+    .control-buttons {
+      display: flex;
+      gap: 0.8rem;
+    }
+    .btn {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      padding: 0.7rem 1.6rem;
+      border-radius: 3rem;
+      color: #495057;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn:hover {
+      background: #f8f9fa;
+      border-color: #adb5bd;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+    .settings-panel {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 2rem;
+      padding: 1.3rem 1.8rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.2rem;
+      color: #495057;
+      font-size: 0.95rem;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .setting-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .setting-group label {
+      font-weight: 500;
+      color: #6c757d;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+    input[type="color"] {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #dee2e6;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 70px;
+      accent-color: #3498db;
+    }
+    input[type="number"] {
+      width: 65px;
+      padding: 0.3rem;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+      color: #495057;
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 26px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #e74c3c;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+    .leaderboard-section {
+      width: 100%;
+      background: rgba(255,255,255,0.85);
+      border-radius: 1.5rem;
+      padding: 1rem 1.5rem;
+      border: 1px solid rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      color: #333;
+      font-size: 0.9rem;
+    }
+    .leaderboard-column {
+      flex: 1 1 180px;
+      min-width: 160px;
+    }
+    .leaderboard-column h4 {
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 0.3rem;
+    }
+    .leaderboard-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .leaderboard-list li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.15rem 0;
+    }
+    .leaderboard-list .rank {
+      font-weight: 600;
+      color: #e67e22;
+    }
+    .leaderboard-list .score {
+      font-weight: 700;
+      color: #2c3e50;
+    }
+    @media (max-width: 700px) {
+      .game-container { padding: 1rem; }
+      .settings-panel { gap: 0.8rem; }
+      .leaderboard-section { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; max-width: 950px;">
+  <div class="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="info-panel">
+      <div class="stat-group">
+        <div class="score-box">
+          <span>🎯 命中</span>
+          <span class="score-value" id="scoreDisplay">0</span>
+        </div>
+        <div class="kpm-box">
+          <span>⚡ KPM</span>
+          <span class="kpm-value" id="kpmDisplay">0.0</span>
+        </div>
+      </div>
+      <div class="timer-box">
+        <span>⏳ 剩余</span>
+        <span class="timer-value" id="timerDisplay">30</span>
+      </div>
+      <div class="control-buttons">
+        <button class="btn" id="startBtn">▶ 开始</button>
+        <button class="btn" id="resetBtn">↺ 重置</button>
+      </div>
+    </div>
+
+    <div class="settings-panel">
+      <div class="setting-group">
+        <label>⏱️ 时间(s)</label>
+        <input type="range" id="timeSlider" min="10" max="120" value="30" step="5">
+        <input type="number" id="timeInput" min="10" max="120" value="30">
+      </div>
+      <div class="setting-group">
+        <label>🔴 准星</label>
+        <input type="color" id="colorPicker" value="#e74c3c">
+      </div>
+      <div class="setting-group">
+        <label>📏 大小</label>
+        <input type="range" id="sizeSlider" min="10" max="40" value="22">
+        <input type="number" id="sizeInput" min="10" max="40" value="22">
+      </div>
+      <div class="setting-group">
+        <label>🔲 厚度</label>
+        <input type="range" id="thickSlider" min="2" max="8" value="3" step="0.5">
+        <input type="number" id="thickInput" min="2" max="8" value="3" step="0.5">
+      </div>
+      <div class="setting-group">
+        <label>✨ 间隙</label>
+        <input type="range" id="gapSlider" min="4" max="24" value="10">
+        <input type="number" id="gapInput" min="4" max="24" value="10">
+      </div>
+      <div class="setting-group">
+        <label>🖱️ 灵敏度</label>
+        <input type="range" id="sensSlider" min="0.3" max="3.0" value="1.0" step="0.1">
+        <input type="number" id="sensInput" min="0.3" max="3.0" value="1.0" step="0.1">
+      </div>
+      <div class="setting-group">
+        <label>🎯 晃动</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="wobbleToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-group">
+        <label>🔴 干扰球</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="distractorToggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <button class="btn" id="defaultBtn">重置默认</button>
+    </div>
+
+    <!-- 排行榜区域 -->
+    <div class="leaderboard-section" id="leaderboardContainer">
+      <div class="leaderboard-column" id="lbNormal">
+        <h4>🏆 普通模式</h4>
+        <ul class="leaderboard-list" id="listNormal"></ul>
+      </div>
+      <div class="leaderboard-column" id="lbWobble">
+        <h4>🎯 晃动模式</h4>
+        <ul class="leaderboard-list" id="listWobble"></ul>
+      </div>
+      <div class="leaderboard-column" id="lbDistractor">
+        <h4>🔴 干扰球模式</h4>
+        <ul class="leaderboard-list" id="listDistractor"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const kpmDisplay = document.getElementById('kpmDisplay');
+  const timerDisplay = document.getElementById('timerDisplay');
+  
+  // 控件
+  const timeSlider = document.getElementById('timeSlider');
+  const timeInput = document.getElementById('timeInput');
+  const colorPicker = document.getElementById('colorPicker');
+  const sizeSlider = document.getElementById('sizeSlider');
+  const sizeInput = document.getElementById('sizeInput');
+  const thickSlider = document.getElementById('thickSlider');
+  const thickInput = document.getElementById('thickInput');
+  const gapSlider = document.getElementById('gapSlider');
+  const gapInput = document.getElementById('gapInput');
+  const sensSlider = document.getElementById('sensSlider');
+  const sensInput = document.getElementById('sensInput');
+  const wobbleToggle = document.getElementById('wobbleToggle');
+  const distractorToggle = document.getElementById('distractorToggle');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const defaultBtn = document.getElementById('defaultBtn');
+  
+  const listNormal = document.getElementById('listNormal');
+  const listWobble = document.getElementById('listWobble');
+  const listDistractor = document.getElementById('listDistractor');
+  
+  // 常量
+  const MAX_TARGETS = 5;
+  const BASE_RADIUS = 14;
+  const MIN_RADIUS_RATIO = 0.75;
+  const MAX_RADIUS_RATIO = 1.3;
+  const MIN_DIST = 95;
+  const MAX_DIST = 283;
+  const LAMBDA = 15;
+  const CENTER_X = canvas.width / 2;
+  const CENTER_Y = canvas.height / 2;
+  const DISTRACTOR_LIFETIME = 5000;
+  
+  // 状态
+  let targets = [];
+  let distractor = null;
+  let score = 0;
+  let timeLeft = 30;
+  let gameActive = false;
+  let gameStartTime = null;  // 用于KPM计算
+  let timerInterval = null;
+  let distractorCheckInterval = null;
+  let animFrame = null;
+  
+  let mouseX = CENTER_X, mouseY = CENTER_Y;
+  let lastRawX = CENTER_X, lastRawY = CENTER_Y;
+  let mouseOnCanvas = true;
+  
+  let settings = {
+    gameTime: 30,
+    crosshairColor: '#e74c3c',
+    size: 22,
+    thickness: 3,
+    gap: 10,
+    sensitivity: 1.0,
+    wobble: false,
+    distractor: false
+  };
+  
+  // ---------- 排行榜存储 ----------
+  const LB_KEY_NORMAL = 'aim_trainer_leaderboard_normal';
+  const LB_KEY_WOBBLE = 'aim_trainer_leaderboard_wobble';
+  const LB_KEY_DISTRACTOR = 'aim_trainer_leaderboard_distractor';
+  
+  function loadLeaderboard(key) {
+    try {
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  function saveLeaderboard(key, scores) {
+    localStorage.setItem(key, JSON.stringify(scores));
+  }
+  
+  function addScoreToLeaderboard(key, newScore) {
+    if (newScore <= 0) return;
+    const scores = loadLeaderboard(key);
+    scores.push(newScore);
+    scores.sort((a, b) => b - a);
+    const top10 = scores.slice(0, 10);
+    saveLeaderboard(key, top10);
+    renderLeaderboard();
+  }
+  
+  function renderLeaderboard() {
+    const normal = loadLeaderboard(LB_KEY_NORMAL);
+    const wobble = loadLeaderboard(LB_KEY_WOBBLE);
+    const distractor = loadLeaderboard(LB_KEY_DISTRACTOR);
+    
+    const renderList = (list, scores) => {
+      list.innerHTML = '';
+      if (scores.length === 0) {
+        list.innerHTML = '<li style="color:#999;">暂无记录</li>';
+        return;
+      }
+      scores.forEach((s, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="rank">#${i+1}</span> <span class="score">${s}</span>`;
+        list.appendChild(li);
+      });
+    };
+    
+    renderList(listNormal, normal);
+    renderList(listWobble, wobble);
+    renderList(listDistractor, distractor);
+  }
+  
+  function recordScoreIfApplicable() {
+    if (score > 0) {
+      const wobbleOn = settings.wobble;
+      const distractorOn = settings.distractor;
+      
+      if (!wobbleOn && !distractorOn) {
+        addScoreToLeaderboard(LB_KEY_NORMAL, score);
+      } else if (wobbleOn && !distractorOn) {
+        addScoreToLeaderboard(LB_KEY_WOBBLE, score);
+      } else if (!wobbleOn && distractorOn) {
+        addScoreToLeaderboard(LB_KEY_DISTRACTOR, score);
+      }
+    }
+  }
+  
+  // ---------- KPM 计算与更新 ----------
+  function updateKPM() {
+    if (!gameActive || !gameStartTime) {
+      kpmDisplay.textContent = '0.0';
+      return;
+    }
+    const elapsed = (Date.now() - gameStartTime) / 1000; // 秒
+    if (elapsed <= 0) {
+      kpmDisplay.textContent = '0.0';
+      return;
+    }
+    const kpm = (score / elapsed) * 60;
+    kpmDisplay.textContent = kpm.toFixed(1);
+  }
+  
+  // ---------- 工具函数 ----------
+  const poissonRandom = (lambda) => {
+    const L = Math.exp(-lambda);
+    let k = 0, p = 1;
+    do { k++; p *= Math.random(); } while (p > L);
+    return k - 1;
+  };
+  
+  const randomRadius = () => {
+    const ratio = MIN_RADIUS_RATIO + Math.random() * (MAX_RADIUS_RATIO - MIN_RADIUS_RATIO);
+    return BASE_RADIUS * ratio;
+  };
+  
+  class Ball {
+    constructor(x, y, radius, isDistractor = false) {
+      this.x = x;
+      this.y = y;
+      this.radius = radius || randomRadius();
+      this.isDistractor = isDistractor;
+      this.spawnTime = Date.now();
+      this.phase = Math.random() * Math.PI * 2;
+      this.speed = 1 + Math.random() * 2;
+      this.amp = 1 + Math.random() * 3;
+      this.offsetX = 0;
+      this.offsetY = 0;
+    }
+    update(time) {
+      if (settings.wobble) {
+        this.offsetX = Math.sin(time * this.speed + this.phase) * this.amp;
+        this.offsetY = Math.cos(time * this.speed * 1.3 + this.phase) * this.amp;
+      } else {
+        this.offsetX = 0;
+        this.offsetY = 0;
+      }
+    }
+    getX() { return this.x + this.offsetX; }
+    getY() { return this.y + this.offsetY; }
+    hitTest(px, py) {
+      const dx = px - this.getX();
+      const dy = py - this.getY();
+      return Math.sqrt(dx*dx + dy*dy) <= this.radius;
+    }
+    isExpired() {
+      return this.isDistractor && (Date.now() - this.spawnTime > DISTRACTOR_LIFETIME);
+    }
+    draw(ctx) {
+      const x = this.getX(), y = this.getY();
+      ctx.save();
+      if (this.isDistractor) {
+        const remaining = Math.max(0, 1 - (Date.now() - this.spawnTime) / DISTRACTOR_LIFETIME);
+        ctx.globalAlpha = 0.3 + remaining * 0.7;
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = '#ff3333';
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius + 3, -Math.PI/2, -Math.PI/2 + Math.PI*2*remaining);
+        ctx.stroke();
+      } else {
+        ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = '#00e5ff';
+        ctx.fill();
+        ctx.shadowColor = 'rgba(0, 255, 255, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius * 0.7, 0, Math.PI*2);
+        ctx.fillStyle = '#00ffff';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+  
+  function isValidPosition(x, y, radius, ignoreDistractor = false) {
+    if (x < radius+5 || x > canvas.width-radius-5 || y < radius+5 || y > canvas.height-radius-5) return false;
+    const allBalls = [...targets];
+    if (!ignoreDistractor && distractor) allBalls.push(distractor);
+    for (const b of allBalls) {
+      if (Math.hypot(b.x - x, b.y - y) < MIN_DIST) return false;
+    }
+    return true;
+  }
+  
+  function generateTargetPos(refBall = null) {
+    const radius = randomRadius();
+    for (let i = 0; i < 200; i++) {
+      let x, y;
+      if (refBall) {
+        const angle = Math.random() * Math.PI*2;
+        const dist = MIN_DIST + Math.random() * (MAX_DIST - MIN_DIST);
+        x = refBall.x + Math.cos(angle) * dist;
+        y = refBall.y + Math.sin(angle) * dist;
+      } else {
+        const offset = poissonRandom(LAMBDA) * 8;
+        const angle = Math.random() * Math.PI*2;
+        x = CENTER_X + Math.cos(angle) * offset;
+        y = CENTER_Y + Math.sin(angle) * offset;
+      }
+      if (isValidPosition(x, y, radius)) return { x, y, radius };
+    }
+    return {
+      x: Math.max(30, Math.min(canvas.width-30, CENTER_X + (Math.random()-0.5)*300)),
+      y: Math.max(30, Math.min(canvas.height-30, CENTER_Y + (Math.random()-0.5)*300)),
+      radius
+    };
+  }
+  
+  function generateDistractorPos() {
+    if (targets.length === 0) return null;
+    let sumX = 0, sumY = 0;
+    targets.forEach(b => { sumX += b.x; sumY += b.y; });
+    const cx = sumX / targets.length, cy = sumY / targets.length;
+    const radius = randomRadius();
+    for (let spread = 30; spread <= 150; spread += 15) {
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI*2;
+        const dist = Math.random() * spread;
+        const x = cx + Math.cos(angle) * dist;
+        const y = cy + Math.sin(angle) * dist;
+        if (isValidPosition(x, y, radius, true)) return { x, y, radius };
+      }
+    }
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random()*(canvas.width-60)+30;
+      const y = Math.random()*(canvas.height-60)+30;
+      if (isValidPosition(x, y, radius, true)) return { x, y, radius };
+    }
+    return { x: CENTER_X, y: CENTER_Y, radius };
+  }
+  
+  function spawnTarget(ref = null) {
+    if (targets.length >= MAX_TARGETS) return;
+    const pos = generateTargetPos(ref);
+    targets.push(new Ball(pos.x, pos.y, pos.radius, false));
+  }
+  
+  function trySpawnDistractor() {
+    if (!settings.distractor || !gameActive) return;
+    if (distractor && !distractor.isExpired()) return;
+    if (distractor && distractor.isExpired()) distractor = null;
+    if (targets.length === 0) return;
+    const pos = generateDistractorPos();
+    if (pos) distractor = new Ball(pos.x, pos.y, pos.radius, true);
+  }
+  
+  function initBalls() {
+    targets = [];
+    distractor = null;
+    spawnTarget();
+    while (targets.length < MAX_TARGETS) {
+      spawnTarget(targets[targets.length-1]);
+    }
+  }
+  
+  function drawCrosshair(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = settings.crosshairColor;
+    ctx.lineWidth = settings.thickness;
+    ctx.shadowColor = settings.crosshairColor;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    const g = settings.gap, s = settings.size;
+    ctx.moveTo(0, -g); ctx.lineTo(0, -s);
+    ctx.moveTo(0, g); ctx.lineTo(0, s);
+    ctx.moveTo(-g, 0); ctx.lineTo(-s, 0);
+    ctx.moveTo(g, 0); ctx.lineTo(s, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, settings.thickness * 0.8, 0, Math.PI*2);
+    ctx.fillStyle = settings.crosshairColor;
+    ctx.fill();
+    ctx.restore();
+  }
+  
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const t = performance.now() / 1000;
+    for (const b of targets) { b.update(t); b.draw(ctx); }
+    if (distractor) {
+      if (distractor.isExpired()) distractor = null;
+      else { distractor.update(t); distractor.draw(ctx); }
+    }
+    if (mouseOnCanvas) drawCrosshair(mouseX, mouseY);
+  }
+  
+  function loop() {
+    draw();
+    animFrame = requestAnimationFrame(loop);
+  }
+  
+  canvas.addEventListener('click', (e) => {
+    if (!gameActive) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const cx = (e.clientX - rect.left) * sx;
+    const cy = (e.clientY - rect.top) * sy;
+    
+    if (distractor && !distractor.isExpired() && distractor.hitTest(cx, cy)) {
+      distractor = null;
+      score = Math.max(0, score - 1);
+      scoreDisplay.textContent = score;
+      updateKPM();
+      return;
+    }
+    for (let i = targets.length-1; i >= 0; i--) {
+      if (targets[i].hitTest(cx, cy)) {
+        targets.splice(i, 1);
+        score++;
+        scoreDisplay.textContent = score;
+        updateKPM();
+        if (gameActive) {
+          if (targets.length > 0) spawnTarget(targets[Math.floor(Math.random()*targets.length)]);
+          else spawnTarget();
+          trySpawnDistractor();
+        }
+        return;
+      }
+    }
+  });
+  
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const rx = (e.clientX - rect.left) * sx;
+    const ry = (e.clientY - rect.top) * sy;
+    if (mouseOnCanvas) {
+      mouseX += (rx - lastRawX) * settings.sensitivity;
+      mouseY += (ry - lastRawY) * settings.sensitivity;
+    } else {
+      mouseX = rx; mouseY = ry;
+    }
+    lastRawX = rx; lastRawY = ry;
+    mouseOnCanvas = true;
+    mouseX = Math.max(0, Math.min(canvas.width, mouseX));
+    mouseY = Math.max(0, Math.min(canvas.height, mouseY));
+  });
+  canvas.addEventListener('mouseleave', () => { mouseOnCanvas = false; });
+  canvas.addEventListener('mouseenter', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    lastRawX = (e.clientX - rect.left) * sx;
+    lastRawY = (e.clientY - rect.top) * sy;
+    mouseX = lastRawX; mouseY = lastRawY;
+    mouseOnCanvas = true;
+  });
+  
+  function stopGame() {
+    gameActive = false;
+    gameStartTime = null;
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (distractorCheckInterval) { clearInterval(distractorCheckInterval); distractorCheckInterval = null; }
+  }
+  
+  function startGame() {
+    if (gameActive) return;
+    stopGame();
+    score = 0;
+    timeLeft = settings.gameTime;
+    gameStartTime = Date.now();
+    scoreDisplay.textContent = '0';
+    kpmDisplay.textContent = '0.0';
+    timerDisplay.textContent = timeLeft;
+    initBalls();
+    gameActive = true;
+    if (settings.distractor) {
+      distractorCheckInterval = setInterval(() => {
+        if (!gameActive) return;
+        trySpawnDistractor();
+      }, 1500);
+    }
+    timerInterval = setInterval(() => {
+      if (!gameActive) return;
+      timeLeft = Math.max(0, timeLeft - 0.1);
+      timerDisplay.textContent = timeLeft.toFixed(1);
+      updateKPM();
+      if (distractor && distractor.isExpired()) distractor = null;
+      if (timeLeft <= 0) {
+        stopGame();
+        timerDisplay.textContent = '0.0';
+        updateKPM();
+        recordScoreIfApplicable();
+      }
+    }, 100);
+  }
+  
+  function resetGame() {
+    stopGame();
+    score = 0;
+    timeLeft = settings.gameTime;
+    scoreDisplay.textContent = '0';
+    kpmDisplay.textContent = '0.0';
+    timerDisplay.textContent = timeLeft;
+    initBalls();
+  }
+  
+  startBtn.addEventListener('click', startGame);
+  resetBtn.addEventListener('click', resetGame);
+  
+  function syncSettings() {
+    settings.gameTime = parseInt(timeInput.value) || 30;
+    settings.crosshairColor = colorPicker.value;
+    settings.size = parseInt(sizeInput.value) || 22;
+    settings.thickness = parseFloat(thickInput.value) || 3;
+    settings.gap = parseInt(gapInput.value) || 10;
+    settings.sensitivity = parseFloat(sensInput.value) || 1.0;
+    settings.wobble = wobbleToggle.checked;
+    settings.distractor = distractorToggle.checked;
+    if (!gameActive) {
+      timeLeft = settings.gameTime;
+      timerDisplay.textContent = timeLeft;
+      kpmDisplay.textContent = '0.0';
+    }
+  }
+  
+  function bindSliderInput(slider, input, callback) {
+    slider.addEventListener('input', () => {
+      input.value = slider.value;
+      if (callback) callback();
+    });
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      if (!isNaN(v) && v >= parseFloat(input.min) && v <= parseFloat(input.max)) {
+        slider.value = v;
+        if (callback) callback();
+      }
+    });
+  }
+  
+  bindSliderInput(timeSlider, timeInput, () => {
+    settings.gameTime = parseInt(timeInput.value) || 30;
+    if (!gameActive) { timeLeft = settings.gameTime; timerDisplay.textContent = timeLeft; }
+  });
+  bindSliderInput(sizeSlider, sizeInput, () => { settings.size = parseInt(sizeInput.value) || 22; });
+  bindSliderInput(thickSlider, thickInput, () => { settings.thickness = parseFloat(thickInput.value) || 3; });
+  bindSliderInput(gapSlider, gapInput, () => { settings.gap = parseInt(gapInput.value) || 10; });
+  bindSliderInput(sensSlider, sensInput, () => { settings.sensitivity = parseFloat(sensInput.value) || 1.0; });
+  
+  colorPicker.addEventListener('input', () => { settings.crosshairColor = colorPicker.value; });
+  wobbleToggle.addEventListener('change', () => { settings.wobble = wobbleToggle.checked; });
+  distractorToggle.addEventListener('change', () => {
+    settings.distractor = distractorToggle.checked;
+    if (!settings.distractor) distractor = null;
+  });
+  
+  defaultBtn.addEventListener('click', () => {
+    timeSlider.value = 30; timeInput.value = 30;
+    colorPicker.value = '#e74c3c';
+    sizeSlider.value = 22; sizeInput.value = 22;
+    thickSlider.value = 3; thickInput.value = 3;
+    gapSlider.value = 10; gapInput.value = 10;
+    sensSlider.value = 1.0; sensInput.value = 1.0;
+    wobbleToggle.checked = false;
+    distractorToggle.checked = false;
+    syncSettings();
+    distractor = null;
+  });
+  
+  renderLeaderboard();
+  syncSettings();
+  initBalls();
+  loop();
+  
+  window.addEventListener('beforeunload', () => {
+    stopGame();
+    if (animFrame) cancelAnimationFrame(animFrame);
+  });
+})();
+</script>
+</body>
+</html>
